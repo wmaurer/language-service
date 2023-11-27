@@ -64,6 +64,8 @@
     "@changesets/cli": "^2.25.2",
     "@effect-ts/build-utils": "0.40.5",
     "@effect-ts/core": "^0.60.2",
+    "@effect/data": "^0.17.1",
+    "@effect/io": "~0.38.0",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@rollup/pluginutils": "^5.0.2",
     "@types/benchmark": "^2.1.2",
@@ -102,9 +104,7 @@
     "typescript": "^4.9.3",
     "ultra-runner": "^3.10.5",
     "vite": "^3.2.5",
-    "vitest": "0.25.5",
-    "@effect/io": "~0.38.0",
-    "@effect/data": "^0.17.1"
+    "vitest": "0.25.5"
   },
   "pnpm": {
     "patchedDependencies": {
@@ -116,5 +116,8 @@
     "side": [],
     "modules": [],
     "global": []
+  },
+  "dependencies": {
+    "effect": "2.0.0-next.56"
   }
 }

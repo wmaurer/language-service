@@ -1,3 +1,5 @@
+import { pipe } from "@effect/language-service/utils/Function"
+
 export type None = {
   readonly _tag: "None"
 }
@@ -31,3 +33,18 @@ export const getOrElse = <A>(alt: () => A) => (self: Option<A>): A => isNone(sel
 
 export const flatMap = <A, B>(fn: (a: A) => Option<B>) =>
   (self: Option<A>): Option<B> => isNone(self) ? self : fn(self.value)
+
+export const filter = <A>(predicate: (a: A) => boolean) =>
+  (self: Option<A>): Option<A> => isNone(self) ? self : predicate(self.value) ? self : none
+
+export const bind = <N extends string, A extends object, B>(name: Exclude<N, keyof A>, f: (a: A) => Option<B>) =>
+  (self: Option<A>): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }> =>
+    pipe(
+      self,
+      flatMap((a) =>
+        pipe(
+          f(a),
+          map((b) => Object.assign({}, a, { [name]: b }) as any)
+        )
+      )
+    )

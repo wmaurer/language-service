@@ -436,3 +436,17 @@ export function asDataFirstExpression(ts: TypeScriptApi, checker: ts.TypeChecker
     return O.none
   }
 }
+
+export function foo(
+  ts: TypeScriptApi,
+  changes: ts.textChanges.ChangeTracker
+) {
+  // console.log("foo")
+  return (
+    sourceFile: ts.SourceFile
+  ) => {
+    // console.log("inner")
+    // console.log({ pos: 0, end: sourceFile.end })
+    changes.deleteRange(sourceFile, { pos: 138, end: 155 })
+  }
+}

@@ -6,6 +6,7 @@ import toggleLazyConst from "@effect/language-service/refactors/toggleLazyConst"
 import toggleReturnTypeAnnotation from "@effect/language-service/refactors/toggleReturnTypeAnnotation"
 import toggleTypeAnnotation from "@effect/language-service/refactors/toggleTypeAnnotation"
 import wrapWithPipe from "@effect/language-service/refactors/wrapWithPipe"
+import yieldEffect from "@effect/language-service/refactors/yieldEffect"
 
 export default {
   asyncAwaitToGen,
@@ -15,5 +16,6 @@ export default {
   toggleReturnTypeAnnotation,
   wrapWithPipe,
   pipeableToDatafirst,
-  toggleLazyConst
+  toggleLazyConst,
+  yieldEffect
 }

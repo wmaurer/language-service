@@ -38,3 +38,11 @@ export const filter: {
 export const join = (
   glue: string
 ) => <A>(self: ReadonlyArray<A>): string => self.join(glue)
+
+const isOutOfBound = <A>(i: number, as: ReadonlyArray<A>): boolean => i < 0 || i >= as.length
+
+export const get: (index: number) => <A>(self: ReadonlyArray<A>) => O.Option<A> = (index) =>
+  (self) => {
+    const i = Math.floor(index)
+    return isOutOfBound(i, self) ? O.none : O.some(self[i])
+  }

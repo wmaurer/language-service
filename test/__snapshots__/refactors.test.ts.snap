@@ -781,3 +781,103 @@ const txt = \\"Hello World\\"
 const txt2 = pipe(\\"Hello\\")
 "
 `;
+
+exports[`yieldEffect.ts > yieldEffect.ts at 5:15 1`] = `
+"// Result of running refactor effect/yieldEffect at position 5:15
+import * as Effect from \\"effect/Effect\\"
+
+Effect.gen(function* (_) {
+    yield* _(Effect.succeed(1))
+})
+
+Effect.gen(function* (_) {
+    Effect.fail('error')
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    Effect.succeed(1).pipe(Effect.map((a) => a + 1))
+})
+
+Effect.gen(function* ($) {
+    Effect.succeed(1).pipe(
+        Effect.map((a) => a + 1)
+    )
+})
+"
+`;
+
+exports[`yieldEffect.ts > yieldEffect.ts at 10:15 1`] = `
+"// Result of running refactor effect/yieldEffect at position 10:15
+import * as Effect from \\"effect/Effect\\"
+
+Effect.gen(function* (_) {
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    Effect.fail('error')
+    yield* _(Effect.succeed(1))
+})
+
+Effect.gen(function* (_) {
+    Effect.succeed(1).pipe(Effect.map((a) => a + 1))
+})
+
+Effect.gen(function* ($) {
+    Effect.succeed(1).pipe(
+        Effect.map((a) => a + 1)
+    )
+})
+"
+`;
+
+exports[`yieldEffect.ts > yieldEffect.ts at 14:15 1`] = `
+"// Result of running refactor effect/yieldEffect at position 14:15
+import * as Effect from \\"effect/Effect\\"
+
+Effect.gen(function* (_) {
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    Effect.fail('error')
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    yield* _(Effect.succeed(1).pipe(Effect.map((a) => a + 1)))
+})
+
+Effect.gen(function* ($) {
+    Effect.succeed(1).pipe(
+        Effect.map((a) => a + 1)
+    )
+})
+"
+`;
+
+exports[`yieldEffect.ts > yieldEffect.ts at 19:12 1`] = `
+"// Result of running refactor effect/yieldEffect at position 19:12
+import * as Effect from \\"effect/Effect\\"
+
+Effect.gen(function* (_) {
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    Effect.fail('error')
+    Effect.succeed(1)
+})
+
+Effect.gen(function* (_) {
+    Effect.succeed(1).pipe(Effect.map((a) => a + 1))
+})
+
+Effect.gen(function* ($) {
+    yield* $(Effect.succeed(1).pipe(
+        Effect.map((a) => a + 1)
+    ))
+})
+"
+`;
