@@ -44,6 +44,17 @@ const getCallExpression = (ts: AST.TypeScriptApi, program: ts.Program) =>
           parentExpressionStatements,
           Ch.head,
           O.map((a) => a.expression),
+          O.map((a) => {
+            const propertyAccess = (a.getChildAt(0) as ts.PropertyAccessExpression)
+            console.log("aaa", propertyAccess.getChildren().map((a) => a.getText()))
+            const foo = propertyAccess.getChildAt(0)
+            const symbol = program.getTypeChecker().getTypeAtLocation(foo).getSymbol()
+            // console.log("bbb", symbol?.exports?.keys())
+            if (symbol && symbol.exports) {
+              console.log("bbb", symbol.exports.get("Effect" as any)?.escapedName)
+            }
+            return a
+          }),
           O.filter((callExpression) =>
             program.getTypeChecker().getTypeAtLocation(callExpression).getSymbol()
               ?.escapedName ===

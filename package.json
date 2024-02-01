@@ -1,7 +1,8 @@
 {
   "name": "@effect/language-service",
-  "version": "0.0.21",
+  "version": "0.0.24",
   "publishConfig": {
+    "registry": "http://localhost:4873",
     "access": "public",
     "directory": "dist"
   },
@@ -85,6 +86,7 @@
     "concurrently": "^7.6.0",
     "cpx": "^1.5.0",
     "docs-ts": "0.6.10",
+    "effect": "2.0.0-next.56",
     "eslint": "^8.29.0",
     "eslint-import-resolver-typescript": "^3.5.2",
     "eslint-plugin-codegen": "0.16.1",
@@ -108,7 +110,6 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@effect-ts/build-utils@0.40.3": "patches/@effect-ts__build-utils@0.40.3.patch",
       "docs-ts@0.6.10": "patches/docs-ts@0.6.10.patch"
     }
   },
@@ -116,8 +117,5 @@
     "side": [],
     "modules": [],
     "global": []
-  },
-  "dependencies": {
-    "effect": "2.0.0-next.56"
   }
 }
