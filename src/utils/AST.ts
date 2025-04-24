@@ -4,6 +4,8 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type ts from "typescript"
 import * as Nano from "../core/Nano.js"
+import * as TypeParser from "../utils/TypeParser.js"
+import * as TypeCheckerApi from "./TypeCheckerApi.js"
 import * as TypeScriptApi from "./TypeScriptApi.js"
 
 /**
@@ -61,35 +63,116 @@ export class NodeNotFoundError
 {}
 
 /**
- * Finds the deepest AST node at the specified position within the given SourceFile.
+ * Finds the first AST node at the specified position within the given SourceFile
+ * that satisfies the provided predicate.
  *
- * This function traverses the AST to locate the node that contains the given position.
- * If multiple nodes overlap the position, it returns the most specific (deepest) node.
+ * This function traverses the AST to locate a node that contains the given position
+ * and matches the predicate. If multiple nodes overlap the position, it returns the
+ * first match found during traversal, which may not necessarily be the deepest node.
  *
- * @param sourceFile - The TypeScript SourceFile to search within.
- * @param position - The position in the file to locate the node for.
- * @returns An `Option`:
- *          - `Option.some<ts.Node>` if a node is found at the specified position.
- *          - `Option.none` if no node is found at the specified position.
+ * @param nodePredicate - A function that takes a node and returns an `Option`:
+ *                        - `Option.some<T>` if the node satisfies the predicate.
+ *                        - `Option.none` if the node does not satisfy the predicate.
+ * @returns A function that takes a `SourceFile` and a position, and returns a `Nano`:
+ *          - Resolves to a tuple `[resultOfPredicate: T, matchedNode: ts.Node]` if a matching node is found.
+ *          - Fails with `NodeNotFoundError` if no matching node is found.
  */
-function findNodeAtPosition(
-  sourceFile: ts.SourceFile,
-  position: number
-): Nano.Nano<ts.Node, NodeNotFoundError, TypeScriptApi.TypeScriptApi> {
-  return Nano.gen(function*() {
-    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
-    function find(node: ts.Node): ts.Node | undefined {
-      if (position >= node.getStart() && position < node.getEnd()) {
-        // If the position is within this node, keep traversing its children
-        return ts.forEachChild(node, find) || node
+function findNodeAtPosition<T extends ts.Node>(
+  nodePredicate: (
+    node: ts.Node
+  ) => Nano.Nano<
+    Option.Option<T>,
+    string | TypeParser.TypeParserIssue,
+    TypeScriptApi.TypeScriptApi | TypeCheckerApi.TypeCheckerApi
+  >
+) {
+  return function(
+    sourceFile: ts.SourceFile,
+    position: number
+  ): Nano.Nano<
+    [resultOfPredicate: T, matchedNode: ts.Node],
+    NodeNotFoundError,
+    TypeScriptApi.TypeScriptApi
+  > {
+    return Nano.gen(function*() {
+      const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+      function find(
+        node: ts.Node
+      ): Nano.Nano<
+        [resultOfPredicate: T, matchedNode: ts.Node] | undefined,
+        string | TypeParser.TypeParserIssue,
+        TypeScriptApi.TypeScriptApi | TypeCheckerApi.TypeCheckerApi
+      > {
+        return Nano.gen(function*() {
+          const result = yield* nodePredicate(node)
+          Array
+            .node.getChildren()
+          return Option.isSome(result) ? [result.value, node] : ts.forEachChild(node, find)
+        })
       }
-      return undefined
-    }
-    const result = find(sourceFile)
-    if (!result) return yield* Nano.fail(new NodeNotFoundError())
-    return result
-  })
+      // function find(node: ts.Node): [resultOfPredicate: T, matchedNode: ts.Node] | undefined {
+      //   if (position >= node.getStart() && position < node.getEnd()) {
+      //     const result = nodePredicate(node)
+      //     return Option.isSome(result) ? [result.value, node] : ts.forEachChild(node, find)
+      //   }
+      //   return undefined
+      // }
+      // Nano.option
+      const result = find(sourceFile)
+      if (!result) return yield* Nano.fail(new NodeNotFoundError())
+      return result
+    })
+  }
 }
+
+export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
+  Nano.gen(function*() {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
+    const expr = Option.liftPredicate(node, ts.isExpression)
+    if (Option.isNone(expr)) {
+      return yield* Nano.fail("Node is not an expression")
+    }
+    Nano.option
+    yield* TypeParser.effectType(typeChecker.getTypeAtLocation(expr.value), expr.value)
+    return expr
+  })
+)
+// export const findEffectExpressionAtPosition = Nano.gen(function*() {
+//   const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+//   const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
+//   return (node: ts.Node) =>
+//     Nano.option(
+//       Nano.gen(function*() {
+//         const expr = Option.liftPredicate(node, ts.isExpression)
+//         if (Option.isNone(expr)) {
+//           return yield* Nano.fail("Node is not an expression")
+//         }
+//         yield* TypeParser.effectType(typeChecker.getTypeAtLocation(expr.value), expr.value)
+//         return expr
+//       })
+//     )
+// })
+// export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
+//   Nano.gen(function*() {
+//     const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+//     const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
+//     // const expr = Option.liftPredicate(node, ts.isExpression).pipe(Nano.f)
+//     // yield* TypeParser.effectType(ts, typeChecker)(typeChecker.getTypeAtLocation(expr), expr)
+//     return expr as any
+//   })
+// )
+// export const findEffectExpressionAtPosition = Nano.gen(function*() {
+//   const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+//   const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
+//   const expr = yield* Option.liftPredicate(node, ts.isExpression)
+//   yield* TypeParser.effectType(typeChecker.getTypeAtLocation(expr), expr)
+//   return findNodeAtPosition((node) =>
+//     Nano.gen(function*() {
+//       return expr as any
+//     })
+//   )
+// })
 
 /**
  * Collects the node at the given position, its descendants, and all its ancestor nodes
