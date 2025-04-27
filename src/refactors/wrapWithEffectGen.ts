@@ -1,3 +1,4 @@
+import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as LSP from "../core/LSP.js"
 import * as Nano from "../core/Nano.js"
@@ -39,16 +40,20 @@ export const wrapWithEffectGen = LSP.createRefactor({
   apply: (sourceFile, textRange) =>
     Nano.gen(function*() {
       yield* Nano.succeed(1)
-      const [effectExpr] = yield* AST.findEffectExpressionAtPosition(
-        sourceFile,
-        textRange.pos
+      const [effectExpr] = yield* pipe(
+        AST.findEffectExpressionAtPosition(sourceFile, textRange.pos),
+        Nano.mapError(() => new LSP.RefactorNotApplicableError())
       )
+      // const [effectExpr] = yield* AST.findEffectExpressionAtPosition(
+      //   sourceFile,
+      //   textRange.pos
+      // ).pipe(Nano.mapError(() => new LSP.RefactorNotApplicableError()))
       // return yield* Nano.fail(new LSP.RefactorNotApplicableError())
-      // const effectGen = AST.createEffectGenCallExpressionWithBlock(
-      //   ts,
-      //   AST.getEffectModuleIdentifierName(ts, program, sourceFile),
-      //   AST.createReturnYieldStarStatement(ts, effectExpr)
-      // )
+      const effectGen = AST.createEffectGenCallExpressionWithBlock(
+        ts,
+        AST.getEffectModuleIdentifierName(ts, program, sourceFile),
+        AST.createReturnYieldStarStatement(ts, effectExpr)
+      )
       return {
         kind: "refactor.rewrite.effect.wrapWithEffectGen",
         description: `Wrap with Effect.gen`,
@@ -59,6 +64,6 @@ export const wrapWithEffectGen = LSP.createRefactor({
         // apply: (changeTracker) => {
         //   changeTracker.replaceNode(sourceFile, effectExpr, effectGen)
         // }
-      }
+      } as any
     })
 })

@@ -122,6 +122,20 @@ export const map: {
     return Either.right(Either.right(f(result.right.right) as B))
   }))
 
+export const mapError: {
+  <A, E, E2>(f: (e: E) => E2): <E, R>(fa: Nano<A, E, R>) => Nano<A, E2, R>
+  <A, E, R, E2>(fa: Nano<A, E, R>, f: (e: E) => E2): Nano<A, E2, R>
+} = dual(2, <A, E, R, E2>(
+  fa: Nano<A, E, R>,
+  f: (e: E) => E2
+) =>
+  new Nano<A, E2, R>((ctx) => {
+    const result = fa.run(ctx)
+    if (Either.isLeft(result)) return result as any
+    if (Either.isLeft(result.right)) return Either.left(f(result.right.left))
+    return result
+  }))
+
 export const orElse = <B, E2, R2>(
   f: () => Nano<B, E2, R2>
 ) =>

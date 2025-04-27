@@ -82,47 +82,33 @@ function findNodeAtPosition<T extends ts.Node>(
     node: ts.Node
   ) => Nano.Nano<
     Option.Option<T>,
-    string | TypeParser.TypeParserIssue,
-    TypeScriptApi.TypeScriptApi | TypeCheckerApi.TypeCheckerApi
+    TypeParser.TypeParserIssue,
+    TypeCheckerApi.TypeCheckerApi | TypeScriptApi.TypeScriptApi
   >
 ) {
-  return function(
-    sourceFile: ts.SourceFile,
-    position: number
-  ): Nano.Nano<
-    [resultOfPredicate: T, matchedNode: ts.Node],
-    NodeNotFoundError,
-    TypeScriptApi.TypeScriptApi
-  > {
-    return Nano.gen(function*() {
-      const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
-      function find(
-        node: ts.Node
-      ): Nano.Nano<
-        [resultOfPredicate: T, matchedNode: ts.Node] | undefined,
-        string | TypeParser.TypeParserIssue,
-        TypeScriptApi.TypeScriptApi | TypeCheckerApi.TypeCheckerApi
+  return (sourceFile: ts.SourceFile, position: number) =>
+    Nano.gen(function*() {
+      function find(node: ts.Node): Nano.Nano<
+        [resultOfPredicate: T, matchedNode: ts.Node],
+        TypeParser.TypeParserIssue | NodeNotFoundError,
+        TypeCheckerApi.TypeCheckerApi | TypeScriptApi.TypeScriptApi
       > {
-        return Nano.gen(function*() {
-          const result = yield* nodePredicate(node)
-          Array
-            .node.getChildren()
-          return Option.isSome(result) ? [result.value, node] : ts.forEachChild(node, find)
-        })
+        if (position >= node.getStart() && position < node.getEnd()) {
+          return Nano.gen(function*() {
+            const result = yield* nodePredicate(node)
+            return (Option.isSome(result)) ?
+              [result.value, node] :
+              yield* Nano.firstSuccessOf(
+                ReadonlyArray.map(node.getChildren(), (child) => find(child))
+              )
+          })
+        }
+        return Nano.fail(new NodeNotFoundError())
       }
-      // function find(node: ts.Node): [resultOfPredicate: T, matchedNode: ts.Node] | undefined {
-      //   if (position >= node.getStart() && position < node.getEnd()) {
-      //     const result = nodePredicate(node)
-      //     return Option.isSome(result) ? [result.value, node] : ts.forEachChild(node, find)
-      //   }
-      //   return undefined
-      // }
-      // Nano.option
-      const result = find(sourceFile)
+      const result = yield* find(sourceFile)
       if (!result) return yield* Nano.fail(new NodeNotFoundError())
       return result
     })
-  }
 }
 
 export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
@@ -131,9 +117,8 @@ export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
     const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
     const expr = Option.liftPredicate(node, ts.isExpression)
     if (Option.isNone(expr)) {
-      return yield* Nano.fail("Node is not an expression")
+      return Option.none()
     }
-    Nano.option
     yield* TypeParser.effectType(typeChecker.getTypeAtLocation(expr.value), expr.value)
     return expr
   })
@@ -187,16 +172,16 @@ export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
  * @returns An array of nodes that are either descendants or ancestors of the node
  *          at the given position and that fully contain the specified range.
  */
-export function collectDescendantsAndAncestorsInRange(
-  sourceFile: ts.SourceFile,
-  textRange: ts.TextRange
-) {
-  return Nano.gen(function*() {
-    const nodeAtPosition = yield* Nano.option(findNodeAtPosition(sourceFile, textRange.pos))
-    if (Option.isNone(nodeAtPosition)) return ReadonlyArray.empty<ts.Node>()
-    return yield* collectSelfAndAncestorNodesInRange(nodeAtPosition.value, textRange)
-  })
-}
+// export function collectDescendantsAndAncestorsInRange(
+//   sourceFile: ts.SourceFile,
+//   textRange: ts.TextRange
+// ) {
+//   return Nano.gen(function*() {
+//     const nodeAtPosition = yield* Nano.option(findNodeAtPosition(sourceFile, textRange.pos))
+//     if (Option.isNone(nodeAtPosition)) return ReadonlyArray.empty<ts.Node>()
+//     return yield* collectSelfAndAncestorNodesInRange(nodeAtPosition.value, textRange)
+//   })
+// }
 
 /**
  * Ensures value is a text range
