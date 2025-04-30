@@ -77,7 +77,7 @@ export class NodeNotFoundError
  *          - Resolves to a tuple `[resultOfPredicate: T, matchedNode: ts.Node]` if a matching node is found.
  *          - Fails with `NodeNotFoundError` if no matching node is found.
  */
-function findNodeAtPosition<T extends ts.Node>(
+export function findNodeAtPosition<T extends ts.Node>(
   nodePredicate: (
     node: ts.Node
   ) => Nano.Nano<
@@ -123,6 +123,84 @@ export const findEffectExpressionAtPosition = findNodeAtPosition((node) =>
     return expr
   })
 )
+
+export function createEffectGenCallExpression(
+  effectModuleIdentifierName: string,
+  node: ts.Node
+) {
+  return Nano.gen(function*() {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    const generator = ts.factory.createFunctionExpression(
+      undefined,
+      ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
+      undefined,
+      [],
+      [],
+      undefined,
+      node as any // NOTE(mattia): intended, to use same routine for both ConciseBody and Body
+    )
+
+    return ts.factory.createCallExpression(
+      ts.factory.createPropertyAccessExpression(
+        ts.factory.createIdentifier(effectModuleIdentifierName),
+        "gen"
+      ),
+      undefined,
+      [generator]
+    )
+  })
+}
+
+export function createEffectGenCallExpressionWithBlock(
+  effectModuleIdentifierName: string,
+  statement: ts.Statement | Array<ts.Statement>
+) {
+  return Nano.gen(function*() {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    return yield* createEffectGenCallExpression(
+      effectModuleIdentifierName,
+      ts.factory.createBlock(Array.isArray(statement) ? statement : [statement], false)
+    )
+  })
+}
+
+export function createReturnYieldStarStatement(
+  expr: ts.Expression
+) {
+  return Nano.gen(function*() {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    return ts.factory.createReturnStatement(
+      ts.factory.createYieldExpression(
+        ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
+        expr
+      )
+    )
+  })
+}
+
+export function getEffectModuleIdentifierName(
+  sourceFile: ts.SourceFile
+) {
+  return Nano.gen(function*() {
+    return Option.match(
+      yield* Nano.option(
+        findImportedModuleIdentifier(
+          sourceFile,
+          (node) =>
+            pipe(
+              TypeParser.importedEffectModule(node),
+              Nano.option,
+              Nano.map(Option.isSome)
+            )
+        )
+      ),
+      {
+        onNone: () => "Effect",
+        onSome: (node) => node.text
+      }
+    )
+  })
+}
 // export const findEffectExpressionAtPosition = Nano.gen(function*() {
 //   const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
 //   const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)

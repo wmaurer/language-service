@@ -1,5 +1,4 @@
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import * as LSP from "../core/LSP.js"
 import * as Nano from "../core/Nano.js"
 import * as AST from "../utils/AST.js"
@@ -39,31 +38,21 @@ export const wrapWithEffectGen = LSP.createRefactor({
   description: "Wrap with Effect.gen",
   apply: (sourceFile, textRange) =>
     Nano.gen(function*() {
-      yield* Nano.succeed(1)
       const [effectExpr] = yield* pipe(
         AST.findEffectExpressionAtPosition(sourceFile, textRange.pos),
         Nano.mapError(() => new LSP.RefactorNotApplicableError())
       )
-      // const [effectExpr] = yield* AST.findEffectExpressionAtPosition(
-      //   sourceFile,
-      //   textRange.pos
-      // ).pipe(Nano.mapError(() => new LSP.RefactorNotApplicableError()))
-      // return yield* Nano.fail(new LSP.RefactorNotApplicableError())
-      const effectGen = AST.createEffectGenCallExpressionWithBlock(
-        ts,
-        AST.getEffectModuleIdentifierName(ts, program, sourceFile),
-        AST.createReturnYieldStarStatement(ts, effectExpr)
+      const effectGen = yield* AST.createEffectGenCallExpressionWithBlock(
+        yield* AST.getEffectModuleIdentifierName(sourceFile),
+        yield* AST.createReturnYieldStarStatement(effectExpr)
       )
       return {
         kind: "refactor.rewrite.effect.wrapWithEffectGen",
         description: `Wrap with Effect.gen`,
         apply: Nano.gen(function*() {
-          // const changeTracker = yield* Nano.service(TypeScriptApi.ChangeTracker)
-          // changeTracker.replaceNode(sourceFile, nodeToReplace, returnedYieldedEffect)
+          const changeTracker = yield* Nano.service(TypeScriptApi.ChangeTracker)
+          changeTracker.replaceNode(sourceFile, effectExpr, effectGen)
         })
-        // apply: (changeTracker) => {
-        //   changeTracker.replaceNode(sourceFile, effectExpr, effectGen)
-        // }
-      } as any
+      }
     })
 })

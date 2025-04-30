@@ -40,31 +40,51 @@ export const removeUnnecessaryEffectGen = LSP.createRefactor({
   description: "Remove unnecessary Effect.gen",
   apply: (sourceFile, textRange) =>
     Nano.gen(function*() {
-      for (
-        const nodeToReplace of yield* AST.collectDescendantsAndAncestorsInRange(
+      const foo = yield* pipe(
+        AST.findNodeAtPosition(
+          (node) => pipe(TypeParser.returnYieldEffectBlock(node), Nano.option)
+        )(
           sourceFile,
-          textRange
-        )
-      ) {
-        const maybeNode = yield* pipe(
-          TypeParser.effectGen(nodeToReplace),
-          Nano.flatMap(({ body }) => TypeParser.returnYieldEffectBlock(body)),
-          Nano.option
-        )
+          textRange.pos
+        ),
+        Nano.option
+      )
+      //  => getSingleReturnEffectFromEffectGen(ts, typeChecker, node))
+      // for (
+      //   const nodeToReplace of yield* AST.collectDescendantsAndAncestorsInRange(
+      //     sourceFile,
+      //     textRange
+      //   )
+      // ) {
+      //   const maybeNode = yield* pipe(
+      //     TypeParser.effectGen(nodeToReplace),
+      //     Nano.flatMap(({ body }) => TypeParser.returnYieldEffectBlock(body)),
+      //     Nano.option
+      //   )
 
-        if (Option.isNone(maybeNode)) continue
-        const returnedYieldedEffect = maybeNode.value
+      //   if (Option.isNone(maybeNode)) continue
+      //   const returnedYieldedEffect = maybeNode.value
 
-        return ({
-          kind: "refactor.rewrite.effect.removeUnnecessaryEffectGen",
-          description: "Remove unnecessary Effect.gen",
-          apply: Nano.gen(function*() {
-            const changeTracker = yield* Nano.service(TypeScriptApi.ChangeTracker)
-            changeTracker.replaceNode(sourceFile, nodeToReplace, returnedYieldedEffect)
-          })
+      //   return ({
+      //     kind: "refactor.rewrite.effect.removeUnnecessaryEffectGen",
+      //     description: "Remove unnecessary Effect.gen",
+      //     apply: Nano.gen(function*() {
+      //       const changeTracker = yield* Nano.service(TypeScriptApi.ChangeTracker)
+      //       changeTracker.replaceNode(sourceFile, nodeToReplace, returnedYieldedEffect)
+      //     })
+      //   })
+      // }
+
+      return ({
+        kind: "refactor.rewrite.effect.removeUnnecessaryEffectGen",
+        description: "Remove unnecessary Effect.gen",
+        apply: Nano.gen(function*() {
+          yield* Nano.succeed(1)
+          // const changeTracker = yield* Nano.service(TypeScriptApi.ChangeTracker)
+          // changeTracker.replaceNode(sourceFile, nodeToReplace, returnedYieldedEffect)
         })
-      }
+      })
 
-      return yield* Nano.fail(new LSP.RefactorNotApplicableError())
+      // return yield* Nano.fail(new LSP.RefactorNotApplicableError())
     })
 })
