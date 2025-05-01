@@ -48,10 +48,9 @@ export const getAncestorNodesInRange = Nano.fn("AST.getAncestorNodesInRange")(fu
   sourceFile: ts.SourceFile,
   textRange: ts.TextRange
 ) {
-  const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
-  const precedingToken = ts.findPrecedingToken(textRange.pos, sourceFile)
-  if (!precedingToken) return ReadonlyArray.empty<ts.Node>()
-  return yield* collectSelfAndAncestorNodesInRange(precedingToken, textRange)
+  const nodeAtPosition = yield* Nano.option(findNodeAtPosition(sourceFile, textRange.pos))
+  if (Option.isNone(nodeAtPosition)) return ReadonlyArray.empty<ts.Node>()
+  return yield* collectSelfAndAncestorNodesInRange(nodeAtPosition.value, textRange)
 })
 
 export class NodeNotFoundError
@@ -70,7 +69,7 @@ export class NodeNotFoundError
  *          - `Option.some<ts.Node>` if a node is found at the specified position.
  *          - `Option.none` if no node is found at the specified position.
  */
-const findNodeAtPosition = Nano.fn("AST.findNodeAtPosition")(function*(
+export const findNodeAtPosition = Nano.fn("AST.findNodeAtPosition")(function*(
   sourceFile: ts.SourceFile,
   position: number
 ) {

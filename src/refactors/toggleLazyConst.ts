@@ -1,10 +1,43 @@
 import * as ReadonlyArray from "effect/Array"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import type ts from "typescript"
 import * as LSP from "../core/LSP.js"
 import * as Nano from "../core/Nano.js"
 import * as AST from "../utils/AST.js"
 import * as TypeScriptApi from "../utils/TypeScriptApi.js"
+
+const getTokenAtPosition = Nano.fn("getTokenAtPosition")(function*(
+  position: number,
+  sourceFile: ts.SourceFile
+) {
+  const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+
+  const startingNode = ts.findPrecedingToken(position, sourceFile)
+  if (!startingNode) return yield* Nano.fail("No node found")
+
+  function find(node: ts.Node) {
+    if (position >= node.getStart() && position < node.getEnd()) {
+      // Traverse deeper into the children first
+      let deepestChild: ts.Node | undefined
+      ts.forEachChild(node, (child) => {
+        const found = find(child)
+        if (found) {
+          deepestChild = found
+        }
+      })
+
+      // If a deeper child is found, return it; otherwise, return the current node
+      return deepestChild || node
+    }
+    return undefined
+  }
+
+  const foundNode = find(startingNode)
+  if (!foundNode) return yield* Nano.fail("No node found")
+
+  return foundNode
+})
 
 export const toggleLazyConst = LSP.createRefactor({
   name: "effect/toggleLazyConst",
@@ -12,6 +45,23 @@ export const toggleLazyConst = LSP.createRefactor({
   apply: (sourceFile, textRange) =>
     Nano.gen(function*() {
       const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+
+      const maybeToken = yield* pipe(getTokenAtPosition(textRange.pos, sourceFile), Nano.option)
+      if (Option.isSome(maybeToken)) {
+        const token = maybeToken.value
+        console.log(
+          "new token z",
+          JSON.stringify(
+            {
+              kind: token.kind,
+              fullText: token.getFullText(),
+              text: token.getText()
+            },
+            null,
+            2
+          )
+        )
+      }
 
       const maybeNode = pipe(
         yield* AST.getAncestorNodesInRange(sourceFile, textRange),

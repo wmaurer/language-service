@@ -52,27 +52,56 @@ export const wrapWithEffectGen = LSP.createRefactor({
         const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
         // TODO: this should be a typeparserIssue!!!
         if (!ts.isExpression(node)) return yield* Nano.fail("is not an expression")
+        // if (ts.isIdentifier(node)) return yield* Nano.fail("is an identifier")
+        if (ts.isVariableDeclaration(node)) return yield* Nano.fail("is a variable declaration")
         const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
         const type = typeChecker.getTypeAtLocation(node)
         yield* TypeParser.effectType(type, node)
         return node
       })
 
-      const nodes = yield* AST.getAncestorNodesInRange(sourceFile, textRange)
-      console.log("foobar nodes", JSON.stringify(nodes.map((n) => n.getFullText()), null, 2))
+      const nodes = yield* AST.collectDescendantsAndAncestorsInRange(sourceFile, textRange)
+
+      const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+      const result = yield* Nano.all(...ReadonlyArray.map(
+        nodes,
+        (n) => {
+          return pipe(
+            Nano.option(xxx(n)),
+            Nano.map((x) => ({
+              text: n.getFullText(),
+              isExpression: ts.isExpression(n),
+              isEmptyStatement: ts.isEmptyStatement(n),
+              isExpressionStatement: ts.isExpressionStatement(n),
+              isVariableDeclaration: ts.isVariableDeclaration(n),
+              isIdentifier: ts.isIdentifier(n),
+              kind: n.kind,
+              x: Option.match(x, {
+                onNone: () => "none",
+                onSome: () => "some"
+              })
+            }))
+          )
+        }
+      ))
+      console.log("foobar nodesxy", JSON.stringify(result, null, 2))
 
       const maybeNode = yield* pipe(
-        yield* AST.getAncestorNodesInRange(sourceFile, textRange),
+        yield* AST.collectDescendantsAndAncestorsInRange(sourceFile, textRange),
         ReadonlyArray.map(xxx),
         Nano.firstSuccessOf,
         Nano.option
       )
+      // const maybeNode = yield* pipe(AST.findNodeAtPosition(sourceFile, textRange.pos), Nano.option)
 
       if (Option.isNone(maybeNode)) return yield* Nano.fail(new LSP.RefactorNotApplicableError())
 
       console.log("foobar maybeNode", maybeNode.value.getFullText())
 
       const node = maybeNode.value
+      if (!ts.isExpression(node)) return yield* Nano.fail(new LSP.RefactorNotApplicableError())
+
+      // const node = maybeNode.value
 
       // TODO: getEffectModuleIdentifierName can be replaced with a different approach
       // in order like in effectGenToFn
