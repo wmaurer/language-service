@@ -254,7 +254,7 @@ export const option = <A, E, R>(fa: Nano<A, E, R>) =>
 
 export const all = <A extends Array<Nano<any, any, any>>>(
   ...args: A
-): Nano<A[number]["~nano.success"], A[number]["~nano.error"], A[number]["~nano.requirements"]> =>
+): Nano<Array<A[number]["~nano.success"]>, A[number]["~nano.error"], A[number]["~nano.requirements"]> =>
   gen(function*() {
     const results: Array<A[number]["~nano.success"]> = []
     for (const arg of args) {

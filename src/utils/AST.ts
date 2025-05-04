@@ -447,3 +447,42 @@ export const parseDataForExtendsClassCompletion = Nano.fn(
     { accessedObject, classDeclaration, className: classDeclaration.name, replacementSpan } as const
   )
 })
+
+const createEffectGenCallExpression = Nano.fn("createEffectGenCallExpression")(function*(
+  effectModuleIdentifierName: string,
+  node: ts.Node
+) {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    const generator = ts.factory.createFunctionExpression(
+      undefined,
+      ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
+      undefined,
+      [],
+      [],
+      undefined,
+      node as any // NOTE(mattia): intended, to use same routine for both ConciseBody and Body
+    )
+
+    return ts.factory.createCallExpression(
+      ts.factory.createPropertyAccessExpression(
+        ts.factory.createIdentifier(effectModuleIdentifierName),
+        "gen"
+      ),
+      undefined,
+      [generator]
+    )
+  }
+)
+
+export const createEffectGenCallExpressionWithBlock = Nano.fn("createEffectGenCallExpressionWithBlock")(function*(
+  effectModuleIdentifierName: string,
+  statement: ts.Statement | Array<ts.Statement>
+) {
+  return Nano.gen(function*() {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    return yield* createEffectGenCallExpression(
+      effectModuleIdentifierName,
+      ts.factory.createBlock(Array.isArray(statement) ? statement : [statement], false)
+    )
+  })
+})
