@@ -53,8 +53,12 @@ export const wrapWithEffectGen = LSP.createRefactor({
         if (!ts.isExpression(node)) return yield* Nano.fail("is not an expression")
         // if (ts.isIdentifier(node)) return yield* Nano.fail("is an identifier")
         // if (ts.isVariableDeclaration(node)) return yield* Nano.fail("is a variable declaration")
-        if (node.parent != null && ts.isVariableDeclaration(node.parent) && node.parent.initializer !== node) 
+        if (
+          node.parent != null && ts.isVariableDeclaration(node.parent) &&
+          node.parent.initializer !== node
+        ) {
           return yield* Nano.fail("is lhs")
+        }
 
         const typeChecker = yield* Nano.service(TypeCheckerApi.TypeCheckerApi)
         const type = typeChecker.getTypeAtLocation(node)
@@ -76,7 +80,8 @@ export const wrapWithEffectGen = LSP.createRefactor({
               isEmptyStatement: ts.isEmptyStatement(n),
               isExpressionStatement: ts.isExpressionStatement(n),
               isVariableDeclaration: ts.isVariableDeclaration(n),
-              isRHS: n.parent != null && ts.isVariableDeclaration(n.parent) && n.parent.initializer === n,
+              isRHS: n.parent != null && ts.isVariableDeclaration(n.parent) &&
+                n.parent.initializer === n,
               // isRHS: ts.isVariableDeclaration(n.parent),
               // parentKind: n.parent == null ? "null" : n.parent.kind,
               isIdentifier: ts.isIdentifier(n),
@@ -112,7 +117,7 @@ export const wrapWithEffectGen = LSP.createRefactor({
 
       // TODO: getEffectModuleIdentifierName can be replaced with a different approach
       // in order like in effectGenToFn
-      const effectGen = yield* createEffectGenCallExpressionWithBlock(
+      const effectGen = yield* AST.createEffectGenCallExpressionWithBlock(
         yield* getEffectModuleIdentifierName(sourceFile),
         yield* createReturnYieldStarStatement(node)
       )
@@ -161,46 +166,6 @@ export function createReturnYieldStarStatement(
         ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
         expr
       )
-    )
-  })
-}
-
-export function createEffectGenCallExpression(
-  effectModuleIdentifierName: string,
-  node: ts.Node
-) {
-  return Nano.gen(function*() {
-    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
-    const generator = ts.factory.createFunctionExpression(
-      undefined,
-      ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
-      undefined,
-      [],
-      [],
-      undefined,
-      node as any // NOTE(mattia): intended, to use same routine for both ConciseBody and Body
-    )
-
-    return ts.factory.createCallExpression(
-      ts.factory.createPropertyAccessExpression(
-        ts.factory.createIdentifier(effectModuleIdentifierName),
-        "gen"
-      ),
-      undefined,
-      [generator]
-    )
-  })
-}
-
-export function createEffectGenCallExpressionWithBlock(
-  effectModuleIdentifierName: string,
-  statement: ts.Statement | Array<ts.Statement>
-) {
-  return Nano.gen(function*() {
-    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
-    return yield* createEffectGenCallExpression(
-      effectModuleIdentifierName,
-      ts.factory.createBlock(Array.isArray(statement) ? statement : [statement], false)
     )
   })
 }
