@@ -122,24 +122,7 @@ export const transformAsyncAwaitToEffectGen = Nano.fn("AST.transformAsyncAwaitTo
     }
     const generatorBody = visitor(node.body!)
 
-    const generator = ts.factory.createFunctionExpression(
-      undefined,
-      ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
-      undefined,
-      [],
-      [],
-      undefined,
-      generatorBody as any // NOTE(mattia): intended, to use same routine for both ConciseBody and Body
-    )
-
-    const effectGenCallExp = ts.factory.createCallExpression(
-      ts.factory.createPropertyAccessExpression(
-        ts.factory.createIdentifier(effectModuleName),
-        "gen"
-      ),
-      undefined,
-      [generator as any]
-    )
+    const effectGenCallExp = yield* createEffectGenCallExpression(effectModuleName, generatorBody)
 
     let currentFlags = ts.getCombinedModifierFlags(node)
     currentFlags &= ~ts.ModifierFlags.Async
@@ -485,3 +468,39 @@ export const createEffectGenCallExpressionWithBlock = Nano.fn(
     ts.factory.createBlock(Array.isArray(statement) ? statement : [statement], false)
   )
 })
+
+export const createReturnYieldStarStatement = Nano.fn("AST.createReturnYieldStarStatement")(
+  function*(expr: ts.Expression) {
+    const ts = yield* Nano.service(TypeScriptApi.TypeScriptApi)
+    return ts.factory.createReturnStatement(
+      ts.factory.createYieldExpression(
+        ts.factory.createToken(ts.SyntaxKind.AsteriskToken),
+        expr
+      )
+    )
+  }
+)
+
+export function getEffectModuleIdentifierName(
+  sourceFile: ts.SourceFile
+) {
+  return Nano.gen(function*() {
+    return Option.match(
+      yield* Nano.option(
+        findImportedModuleIdentifier(
+          sourceFile,
+          (node) =>
+            pipe(
+              TypeParser.importedEffectModule(node),
+              Nano.option,
+              Nano.map(Option.isSome)
+            )
+        )
+      ),
+      {
+        onNone: () => "Effect",
+        onSome: (node) => node.text
+      }
+    )
+  })
+}
